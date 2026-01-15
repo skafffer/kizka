@@ -1,0 +1,225 @@
+--============================--
+--   SERVER HOP GUI SCRIPT    --
+--============================--
+
+if queue_on_teleport then
+    queue_on_teleport([[
+        loadstring(game:HttpGet("https://pastebin.com/raw/zCvq3VNV"))()
+    ]])
+end
+
+-- Services
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+
+local player = Players.LocalPlayer
+local placeId = game.PlaceId
+
+-- Config paths for executor
+local FOLDER = "ServerHop"
+local CONFIG = FOLDER.."/config.json"
+
+-- Ensure folder and file exist
+local function ensureConfig()
+    if not isfolder(FOLDER) then makefolder(FOLDER) end
+    if not isfile(CONFIG) then writefile(CONFIG, "{}") end
+end
+
+local function loadConfig()
+    ensureConfig()
+    local ok, data = pcall(function()
+        return HttpService:JSONDecode(readfile(CONFIG))
+    end)
+    return ok and data or {}
+end
+
+local function saveConfig(tbl)
+    ensureConfig()
+    writefile(CONFIG, HttpService:JSONEncode(tbl))
+end
+
+-- Load config
+local config = loadConfig()
+if config.AutoHop == nil then
+    config.AutoHop = false
+end
+
+-- Remove old GUI
+pcall(function()
+    if player.PlayerGui:FindFirstChild("ServerHopGUI") then
+        player.PlayerGui.ServerHopGUI:Destroy()
+    end
+end)
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "ServerHopGUI"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local main = Instance.new("Frame")
+main.Size = UDim2.fromOffset(260, 150)
+main.Position = UDim2.fromScale(0.5, 0.5)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+main.Parent = gui
+main.Active = true
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 18)
+
+-- Shadow
+local shadow = Instance.new("ImageLabel")
+shadow.Image = "rbxassetid://1316045217"
+shadow.ImageTransparency = 0.6
+shadow.Size = UDim2.new(1, 40, 1, 40)
+shadow.Position = UDim2.fromOffset(-20, -20)
+shadow.BackgroundTransparency = 1
+shadow.Parent = main
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -20, 0, 32)
+title.Position = UDim2.fromOffset(10, 6)
+title.BackgroundTransparency = 1
+title.Text = "Server Hopper"
+title.TextColor3 = Color3.fromRGB(170, 180, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = main
+
+-- Tween function
+local function tween(obj, props)
+    TweenService:Create(obj, TweenInfo.new(0.15, Enum.EasingStyle.Quad), props):Play()
+end
+
+-- ServerHop button
+local button = Instance.new("TextButton")
+button.Size = UDim2.fromOffset(200, 40)
+button.Position = UDim2.fromScale(0.5, 0.55)
+button.AnchorPoint = Vector2.new(0.5, 0.5)
+button.Text = "SERVERHOP"
+button.Font = Enum.Font.GothamBold
+button.TextSize = 16
+button.TextColor3 = Color3.new(1,1,1)
+button.BackgroundColor3 = Color3.fromRGB(90, 100, 255)
+button.AutoButtonColor = false
+button.Parent = main
+Instance.new("UICorner", button).CornerRadius = UDim.new(0, 12)
+
+button.MouseEnter:Connect(function()
+    tween(button, {BackgroundColor3 = Color3.fromRGB(120, 130, 255)})
+end)
+button.MouseLeave:Connect(function()
+    tween(button, {BackgroundColor3 = Color3.fromRGB(90, 100, 255)})
+end)
+
+button.MouseButton1Click:Connect(function()
+    button.Text = "HOPPING..."
+    TeleportService:Teleport(placeId, player)
+end)
+
+-- Auto ServerHop checkbox
+local checkboxFrame = Instance.new("Frame")
+checkboxFrame.Size = UDim2.fromOffset(200, 30)
+checkboxFrame.Position = UDim2.fromScale(0.5, 0.85)
+checkboxFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+checkboxFrame.BackgroundTransparency = 1
+checkboxFrame.Parent = main
+
+local checkbox = Instance.new("TextButton")
+checkbox.Size = UDim2.fromOffset(24, 24)
+checkbox.Position = UDim2.fromOffset(0, 3)
+checkbox.Text = ""
+checkbox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+checkbox.AutoButtonColor = false
+checkbox.Parent = checkboxFrame
+Instance.new("UICorner", checkbox).CornerRadius = UDim.new(0,4)
+
+local checkboxLabel = Instance.new("TextLabel")
+checkboxLabel.Size = UDim2.fromOffset(160, 24)
+checkboxLabel.Position = UDim2.fromOffset(30, 0)
+checkboxLabel.BackgroundTransparency = 1
+checkboxLabel.Text = "Auto ServerHop"
+checkboxLabel.Font = Enum.Font.Gotham
+checkboxLabel.TextSize = 16
+checkboxLabel.TextColor3 = Color3.fromRGB(200,200,255)
+checkboxLabel.TextXAlignment = Enum.TextXAlignment.Left
+checkboxLabel.Parent = checkboxFrame
+
+-- Checkbox update
+local function updateCheckbox()
+    if config.AutoHop then
+        checkbox.BackgroundColor3 = Color3.fromRGB(90,200,90)
+    else
+        checkbox.BackgroundColor3 = Color3.fromRGB(80,80,80)
+    end
+end
+
+updateCheckbox()
+
+checkbox.MouseButton1Click:Connect(function()
+    config.AutoHop = not config.AutoHop
+    updateCheckbox()
+    saveConfig(config)
+end)
+
+-- Dragging
+local dragging = false
+local dragStart, startPos
+
+title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = main.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        main.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+-- Timer path
+local timerLabel = player:WaitForChild("PlayerGui"):WaitForChild("CelestialTimeLeft"):WaitForChild("TextLabel")
+
+local function getTimeInSeconds()
+    local text = timerLabel.Text
+    local min, sec = text:match("(%d+):(%d+)")
+    if min and sec then
+        return tonumber(min)*60 + tonumber(sec)
+    end
+    return 0
+end
+
+-- Auto-serverhop loop
+RunService.RenderStepped:Connect(function()
+    if config.AutoHop then
+        local timeSeconds = getTimeInSeconds()
+        if timeSeconds >= 120 then
+            print("Timer ≥ 2 minutes, server hopping...")
+            TeleportService:Teleport(placeId, player)
+        end
+    end
+end)
+
+-- Entrance animation
+main.Size = UDim2.fromOffset(0, 0)
+TweenService:Create(main, TweenInfo.new(0.35, Enum.EasingStyle.Back), {
+    Size = UDim2.fromOffset(260, 150)
+}):Play()
