@@ -1,6 +1,8 @@
 --============================--
 --   SERVER HOP GUI SCRIPT    --
 --============================--
+--update
+
 
 if queue_on_teleport then
     queue_on_teleport([[
